@@ -1,0 +1,149 @@
+alias curr_pid R1;
+curr_pid = [SYSTEM_STATUS_TABLE + 1];
+
+alias user_sp R2;
+user_sp = SP;
+
+[PROCESS_TABLE + 16*curr_pid + 9] = 8;
+
+[PROCESS_TABLE + 16*curr_pid + 13] = SP;
+SP = [PROCESS_TABLE + 16*curr_pid + 11]*512 - 1;
+
+multipush(R1, R2);
+R1 = 1; //get free pcb entry
+call PROCESS_MANAGER;
+multipop(R1, R2);
+
+if(R0 == -1) then
+    [[PTBR + 2*(user_sp-1)/512]*512 + (user_sp-1)%512] = -1;
+    [PROCESS_TABLE + 16*curr_pid + 9] = 0;
+    SP = user_sp;
+    ireturn;
+endif;
+
+alias child_pid R3;
+R3 = R0;
+
+if([PTBR + 5] == "0000") then //heap is not allocated
+    multipush(R1, R2, R3);
+    R1 = 1;
+    call MEMORY_MANAGER;
+    [PTBR + 4] = R0;
+    [PTBR + 5] = "1110";
+    R1 = 1;
+    call MEMORY_MANAGER;
+    [PTBR + 6] = R0;
+    [PTBR + 7] = "1110";
+    multipop(R1, R2, R3);
+endif;
+
+//Get user area page
+multipush(R1, R2, R3);
+R1 = 1;
+call MEMORY_MANAGER;
+multipop(R1, R2, R3);
+
+R4 = PROCESS_TABLE + 16*child_pid; 
+R5 = PROCESS_TABLE + 16*curr_pid; 
+
+//Initializing process table entries of child
+[R4 + 3] = [R5 + 3]; //copy userid
+[R4 + 6] = [R5 + 6]; //copy swap flag
+[R4 + 7] = [R5 + 7]; //copy inode index
+[R4 + 10] = [R5 + 10]; //copy user area swap status
+[R4 + 13] = [R5 + 13]; //copy user SP
+
+[R4 + 0] = 0; //set TICK
+[R4 + 2] = curr_pid; //set PPID
+[R4 + 9] = 0; //set mode flag
+[R4 + 11] = R0; //set user area page
+[R4 + 12] = 0; //set KPTR
+//PID, PTBR and PTLR set get_free_pcb() 
+
+//Copy resource table content to child
+R4 = ([PROCESS_TABLE + 16*child_pid + 11] + 1)*512 - 16;
+R5 = ([PROCESS_TABLE + 16*curr_pid + 11] + 1)*512 - 16;
+
+R6 = 0;
+while(R6 < 16) do
+    [R4 + R6] = [R5 + R6];
+    if(R6 % 2 == 0 && [R4 + R6] == SEMAPHORE) then
+        R7 = [R4 + R6 + 1]; //R7 holds semaphore table index
+        [SEMAPHORE_TABLE + 4*R7 + 1] = [SEMAPHORE_TABLE + 4*R7 + 1] + 1;
+    endif;
+    R6 = R6 + 1;
+endwhile;
+
+//Copy disk map table
+R4 = DISK_MAP_TABLE + 10*child_pid;
+R5 = DISK_MAP_TABLE + 10*curr_pid;
+
+R6 = 2;
+while(R6 < 10) do
+    [R4 + R6] = [R5 + R6];
+    R6 = R6 + 1;
+endwhile;
+
+//Initialize page table of child process
+R4 = [PROCESS_TABLE + 16*child_pid + 14];
+R5 = [PROCESS_TABLE + 16*curr_pid + 14];
+
+R6 = 0;
+while(R6 < 16) do
+    [R4 + R6] = [R5 + R6];
+    if(R6%2 == 0) then
+        R7 = MEMORY_FREE_LIST + [R4 + R6];
+        [R7] = [R7] + 1;
+       
+    endif;
+    R6 = R6 + 1;
+endwhile;
+
+multipush(R1, R2, R3, R4, R5);
+R1 = 1;
+call MEMORY_MANAGER;
+multipop(R1, R2, R3, R4, R5);
+[R4 + 16] = R0;
+[R4 + 17] = [R5 + 17];
+
+multipush(R1, R2, R3, R4, R5);
+R1 = 1;
+call MEMORY_MANAGER;
+multipop(R1, R2, R3, R4, R5);
+[R4 + 18] = R0;
+[R4 + 19] = [R5 + 19];
+
+//copy stack content word-by-word
+R6 = 0;
+R9 = [R4 + 16];
+R10 = [R4 + 18];
+while(R6 < 512) do
+    [R9*512 + R6] = [[R5 + 16]*512 + R6];
+    R6 = R6 + 1;
+endwhile;
+R6 = 0;
+while(R6 < 512) do
+    [R10*512 + R6] = [[R5 + 18]*512 + R6];
+    R6 = R6 + 1;
+endwhile;
+
+//Store BP on top of kernel stack of child process
+[[PROCESS_TABLE + 16*child_pid + 11]*512] = BP;
+
+[PROCESS_TABLE + 16*child_pid + 4] = CREATED;
+
+//Setup return values to parent and child process
+R9 = [PROCESS_TABLE + 16*child_pid + 13];
+R10 = [PROCESS_TABLE + 16*curr_pid + 13];
+
+alias child_sp R9;
+
+alias child_ptbr R4;
+alias curr_ptbr R5;
+
+[[child_ptbr + 2*(child_sp-1)/512]*512 + (child_sp-1)%512] = 0;
+[[curr_ptbr + 2*(user_sp-1)/512]*512 + (user_sp-1)%512] = child_pid;
+
+[PROCESS_TABLE + 16*curr_pid + 9] = 0;
+SP = user_sp;
+ireturn;

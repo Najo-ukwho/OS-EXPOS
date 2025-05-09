@@ -1,0 +1,56 @@
+alias user_sp R1;
+user_sp = SP;
+
+alias pid R2;
+pid = [SYSTEM_STATUS_TABLE + 1];
+
+alias user_id R3;
+user_id = [SYSTEM_STATUS_TABLE];
+
+[PROCESS_TABLE + 16*pid + 9] = 21; //Shutdown syscall no is 21
+
+SP = [PROCESS_TABLE + 16*pid + 11]*512 - 1;
+
+if(pid != 1 || user_id != 1) then
+    [[PTBR + 2*(user_sp-1)/512]*512 + (user_sp-1)%512] = -1;
+    [PROCESS_TABLE + 16*pid + 9] = 0;
+    SP = user_sp;
+    ireturn;
+endif;
+
+//store Inode table and user table
+multipush(R1, R2, R3);
+R1 = 1;
+R2 = pid; //pid is R2
+R3 = 59; //page no
+R4 = 3; //block no
+call DEVICE_MANAGER;
+multipop(R1, R2, R3);
+
+multipush(R1, R2, R3);
+R1 = 1;
+R2 = pid; //pid is R2
+R3 = 60; //page no
+R4 = 4; //block no
+call DEVICE_MANAGER;
+multipop(R1, R2, R3);
+
+//Store root file
+multipush(R1, R2, R3);
+R1 = 1;
+R2 = pid; //pid is R2
+R3 = 62; //page no
+R4 = 5; //block no
+call DEVICE_MANAGER;
+multipop(R1, R2, R3);
+
+//Store disk free list
+multipush(R1, R2, R3);
+R1 = 1;
+R2 = pid; //pid is R2
+R3 = 61; //page no
+R4 = 2; //block no
+call DEVICE_MANAGER;
+multipop(R1, R2, R3);
+
+halt;

@@ -1,0 +1,25 @@
+[PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE+1] + 13] = SP;
+SP = 512*[PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE+1] + 11] - 1;
+
+backup;
+
+alias req_pid R0;
+req_pid = [TERMINAL_STATUS_TABLE+1];
+
+[PROCESS_TABLE + 16*req_pid + 8] = P0;
+
+//releasing the termnial
+
+multipush(R0);
+
+R1 = 9;
+R2 = req_pid;
+
+call RESOURCE_MANAGER;
+
+multipop(R0);
+
+restore;
+
+SP = [PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE+1] + 13];
+ireturn;

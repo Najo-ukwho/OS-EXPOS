@@ -1,0 +1,88 @@
+alias ret_val R0;
+alias fn_num R1;
+alias arg1 R2;
+
+if(fn_num == 1) then  //Get free page
+    [SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] + 1;
+    while([SYSTEM_STATUS_TABLE + 2] == 0) do
+        [PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE+1] + 4] = WAIT_MEM;
+        multipush(R0, R1, R2);
+        call SCHEDULER;
+        multipop(R0, R1, R2);
+    endwhile;
+
+    [SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] - 1;
+    [SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] - 1;
+
+    R3 = 0;
+    while(R3 < MAX_MEM_PAGE) do
+        if([MEMORY_FREE_LIST + R3] == 0) then
+            ret_val = R3; //Return value
+            [MEMORY_FREE_LIST + R3] = 1;
+            break;
+        endif;
+        R3 = R3 + 1;
+    endwhile;
+    
+    return;
+endif;
+
+if(fn_num == 2) then //Release page
+    [MEMORY_FREE_LIST + arg1] = [MEMORY_FREE_LIST + arg1] - 1;
+    if([MEMORY_FREE_LIST + arg1] == 0) then
+        [SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] + 1;
+        R3 = 1;
+        while(R3 < 16) do
+            if([PROCESS_TABLE + 16*R3 + 4] == WAIT_MEM) then
+                [PROCESS_TABLE + 16*R3 + 4] = READY;
+            endif;
+            R3 = R3 + 1;
+        endwhile;
+    endif;
+
+    return;
+endif;
+
+if(fn_num == 4) then //Release block
+    R3 = DISK_FREE_LIST + arg1;
+    [R3] = [R3] - 1;
+    return;
+endif;
+
+if(fn_num == 5) then //Get code page
+    R3 = 0;
+    while(R3 < 16) do
+        R4 = 0;
+        while(R4 < 4) do
+            if([DISK_MAP_TABLE + 10*R3 + 4 + R4] == arg1) then //arg1 is R2
+                alias ptbr R5;
+                ptbr = [PROCESS_TABLE + 16*R3 + 14];
+                if([ptbr + 8 + 2*R4 + 1] != "0000") then
+                    R6 = MEMORY_FREE_LIST + [ptbr + 8 + 2*R4];
+                    [R6] = [R6] + 1;
+                    ret_val = [ptbr + 8 + 2*R4];
+                    return;
+                endif;
+            endif;
+            R4 = R4 + 1;
+        endwhile;
+        R3 = R3 + 1;
+    endwhile;
+
+    multipush(R1, R2, R3);
+    R1 = 1; //get free page
+    call MEMORY_MANAGER;
+    multipop(R1, R2, R3);
+
+    multipush(R0, R1, R2, R3, R4);
+    R1 = 2;
+    R4 = R2; //block number
+    R2 = [SYSTEM_STATUS_TABLE + 1];
+    R3 = R0; //page number (return from get free page function)
+    call DEVICE_MANAGER;
+    multipop(R0, R1, R2, R3, R4);
+
+    //R0 already contains the return value
+
+    return;
+endif;

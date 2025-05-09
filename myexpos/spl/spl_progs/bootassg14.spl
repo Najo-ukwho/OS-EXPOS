@@ -1,0 +1,175 @@
+breakpoint;
+
+loadi (63,13); //Loading library
+loadi (64,14);
+
+loadi (4,17); //Loading Timer Interrupt
+loadi (5,18);
+
+loadi (65,7); //Loading INIT Program
+loadi (66,8);
+
+loadi (22,35); //Interrupt10 : Exit syscall
+loadi (23,36);
+
+loadi(2,15); //Exception Handler
+loadi(3,16);
+
+loadi(16,29); //Loading INT7 i.e Syscall for Write
+loadi(17,30);
+
+//loadi(69,11); //Loading Idle Code
+//loadi(70,12);
+
+loadi(54,67); //Loading the boot module i.e (module 7)
+loadi(55,68);
+
+loadi(85,69); //Loading 1st user program, exe.xsm(print even). Code=page 85; heap= 83,84; stack= 86,87; UAP = 88
+
+loadi(91,70); //Loading 2nd user program, prime.xsm. Code=page 91;heap =89,90; stack = 92,93, UAP = 94
+
+loadi(50,63); //Loading Module 5, Scheduler/Context switch module
+loadi(51,64);
+
+
+PTBR = PAGE_TABLE_BASE + 20; //For init process. As idle occupies PTBR
+PTLR = 10 ;
+
+//Library
+[PTBR+0] = 63;
+[PTBR+1] = "0100";
+[PTBR+2] = 64;
+[PTBR+3] = "0100";
+
+//Heap
+[PTBR+4] = 78;
+[PTBR+5] = "0100";
+[PTBR+6] = 79;
+[PTBR+7] = "0100";
+
+//Code
+[PTBR+8] = 65;
+[PTBR+9] = "0100";
+[PTBR+10] = 66;
+[PTBR+11] = "0100";
+[PTBR+12] = -1;
+[PTBR+13] = "0000";
+[PTBR+14] = -1;
+[PTBR+15] = "0000";
+
+//Stack
+[PTBR+16] = 76;
+[PTBR+17] = "0110";
+[PTBR+18] = 77;
+[PTBR+19] = "0110";
+
+[PROCESS_TABLE + 16 + 1] =1 ; //PID is 1 for init process
+[PROCESS_TABLE + 16 + 4] = CREATED ; //As the first scheduled process is Idle code
+[PROCESS_TABLE + 16 + 13] = 8*512 ; //Same because the Stack is residing in logical page 8 of virtual mem
+[PROCESS_TABLE + 16 + 12] = 0 ; //KPTR value is set to 0 as always
+[PROCESS_TABLE + 16 + 14] = PTBR ; //The current value of PTBR is set to PTBR + 20
+[PROCESS_TABLE + 16 + 15] = 10 ; //As always 10(ABI convention)
+[PROCESS_TABLE + 16 + 11] = 80 ; //Setting the user area page as 80
+[76 * 512] = [65 * 512 + 1] ;
+
+//For User program 1
+
+PTBR = PAGE_TABLE_BASE + 40;
+PTLR = 10;
+
+//Library
+[PTBR+0] = 63 ;    
+[PTBR+1] = "0100" ;
+[PTBR+2] = 64 ;
+[PTBR+3] = "0100" ;
+
+//Heap
+[PTBR+4] = 83 ;     //Don't need heap unless user defined datatype or alloc is used
+[PTBR+5] = "0110" ;
+[PTBR+6] = 84 ;
+[PTBR+7] = "0110" ;
+
+//Code
+[PTBR+8] = 85 ;
+[PTBR+9] = "0100" ;
+[PTBR+10] = -1 ;
+[PTBR+11] = "0000" ;
+[PTBR+12] = -1 ;
+[PTBR+13] = "0000" ;
+[PTBR+14] = -1 ;
+[PTBR+15] = "0000" ;
+
+//Stack
+[PTBR+16] = 86 ;
+[PTBR+17] = "0110" ;
+[PTBR+18] = 87 ;
+[PTBR+19] = "0110" ;
+
+[PROCESS_TABLE + 2*16 + 1] = 2 ;       //PID
+[PROCESS_TABLE + 2*16 + 4] = CREATED ; //STATE
+[PROCESS_TABLE + 2*16 + 11] = 88 ;     //UAP(User Area Page Number)
+[PROCESS_TABLE + 2*16 + 12] = 0 ;      //Kernel Stack Pointer(KSP) is Assumed to be 0
+[PROCESS_TABLE + 2*16 + 13] = 8*512 ;  //User stack pointer always points to logical page 8
+[PROCESS_TABLE + 2*16 + 14] = PAGE_TABLE_BASE + 40 ;
+[PROCESS_TABLE + 2*16 + 15] = PTLR ;
+[86 * 512] = [85 * 512 + 1] ;        //storing the address of 2nd instruction of code in 1st address of stack
+
+//For 2nd user program
+
+PTBR = PAGE_TABLE_BASE + 60;
+PTLR = 10;
+
+//Library
+[PTBR+0] = 63 ;
+[PTBR+1] = "0100" ;
+[PTBR+2] = 64 ;
+[PTBR+3] = "0100" ;
+
+//Heap
+[PTBR+4] = 89 ;     //Don't need heap unless user defined datatype or alloc is used
+[PTBR+5] = "0110" ;
+[PTBR+6] = 90 ;
+[PTBR+7] = "0110" ;
+
+//Code
+[PTBR+8] = 91 ;
+[PTBR+9] = "0100" ;
+[PTBR+10] = -1 ;
+[PTBR+11] = "0000" ;
+[PTBR+12] = -1 ;
+[PTBR+13] = "0000" ;
+[PTBR+14] = -1 ;
+[PTBR+15] = "0000" ;
+
+//Stack
+[PTBR+16] = 92;
+[PTBR+17] = "0110";
+[PTBR+18] = 93;
+[PTBR+19] = "0110";
+
+[PROCESS_TABLE + 3*16 + 1] = 3 ;       //PID
+[PROCESS_TABLE + 3*16 + 4] = CREATED ; //STATE
+[PROCESS_TABLE + 3*16 + 11] = 94 ;     //UAP(User Area Page Number)
+[PROCESS_TABLE + 3*16 + 12] = 0 ;      //Kernel Stack Pointer(KSP) is Assumed to be 0
+[PROCESS_TABLE + 3*16 + 13] = 8*512 ;  //User stack pointer always points to logical page 8
+[PROCESS_TABLE + 3*16 + 14] = PAGE_TABLE_BASE + 60 ;
+[PROCESS_TABLE + 3*16 + 15] = PTLR ;
+[92 * 512] = [91 * 512 + 1] ;        //storing the address of 2nd instruction of code in 1st address of stack
+
+
+[PROCESS_TABLE + 4*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 5*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 6*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 7*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 8*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 9*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 10*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 11*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 12*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 13*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 14*16 + 4] = TERMINATED ;
+[PROCESS_TABLE + 15*16 + 4] = TERMINATED ;
+
+
+return;
+

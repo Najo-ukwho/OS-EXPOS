@@ -1,0 +1,79 @@
+[PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE + 1] + 9] = -1;
+[PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE + 1] + 13] = SP;
+
+SP = [PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE + 1] + 11]*512 - 1;
+
+backup;
+multipush(EIP);
+
+if(EC != 0) then
+    R1 = 3; //console write
+    R2 = [SYSTEM_STATUS_TABLE+1];
+    if(EC == 1) then
+        R3 = "Illegal instruction";
+    endif;
+    if(EC == 2) then
+        R3 = "Illegal memory";
+    endif;
+    if(EC == 3) then
+        R3 = "Arithmetic exception";
+    endif;
+    if([PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE + 1] + 13] >= 10*512-1) then
+        R3 = "User stack full";
+    endif;
+    call DEVICE_MANAGER;
+
+    R1 = 3; //exit process
+    R2 = [SYSTEM_STATUS_TABLE+1];
+    call PROCESS_MANAGER;
+
+    call SCHEDULER;
+    //This process will not be scheduled again, as it will be marked terminated
+endif;
+
+if(EPN >= 4) then
+    R5 = [DISK_MAP_TABLE + 10*[SYSTEM_STATUS_TABLE+1] + EPN];
+    if(R5 == -1) then
+        multipush(R1, R2, R5);
+        R1 = 3; //exit process
+        R2 = [SYSTEM_STATUS_TABLE + 1];
+        call PROCESS_MANAGER;
+        multipop(R1, R2, R5);
+
+        call SCHEDULER;
+
+        return;
+    endif;
+
+    R1 = 5; //get code page
+    R2 = R5;
+    call MEMORY_MANAGER;
+
+    [PTBR + 2*EPN] = R0;
+    [PTBR + 2*EPN + 1] = "1100";
+
+else //when page fault occured for heap
+    R1 = 1;
+    call MEMORY_MANAGER;
+    [PTBR + 4] = R0;
+    [PTBR + 5] = "1110";
+
+    R1 = 1;
+    call MEMORY_MANAGER;
+    [PTBR + 6] = R0;
+    [PTBR + 7] = "1110";
+endif;
+
+[PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE + 1] + 9] = 0;
+
+multipop(EIP);
+restore;
+
+SP = [PROCESS_TABLE + 16*[SYSTEM_STATUS_TABLE+1] + 13];
+SP = SP+1;
+
+[[PTBR + 2*SP/512]*512 + SP%512] = EIP;
+
+ireturn;
+
+

@@ -1,0 +1,57 @@
+// Load Boot Module and Idle Process
+loadi(54,67); 
+loadi(55,68); 
+loadi(69,11);
+loadi(70,12);
+
+
+// Set SP for Boot Module Invocation
+SP = 82 * 512 - 1; // Stack for Idle Process
+
+// Call Boot Module
+
+call BOOT_MODULE;
+
+// Post Boot Module Code
+
+// Setup Page Table for Idle Process
+PTBR = PAGE_TABLE_BASE;  // Start of Idle Process Page Table
+[PTBR + 0] = -1;  // Library 
+[PTBR + 1] = "0000";
+[PTBR + 2] = -1;
+[PTBR + 3] = "0000";
+[PTBR + 4] = -1;  // Heap
+[PTBR + 5] = "0000";
+[PTBR + 6] = -1;
+[PTBR + 7] = "0000";
+[PTBR + 8] = 69;  // Code 
+[PTBR + 9] = "0100";
+[PTBR + 10] = 70;
+[PTBR + 11] = "0100";
+[PTBR + 12] = -1;
+[PTBR + 13] = "0000";
+[PTBR + 14] = -1;
+[PTBR + 15] = "0000";
+[PTBR + 16] = 81;  // Stack 
+[PTBR + 17] = "0110";
+[PTBR + 18] = -1;
+[PTBR + 19] = "0000";
+PTLR = 10;
+
+// Initialize Process Table for Idle Process
+[PROCESS_TABLE + 1] = 0;  // PID
+[PROCESS_TABLE + 4] = RUNNING;  // State
+[PROCESS_TABLE + 11] = 82;  // User Area Page Number
+[PROCESS_TABLE + 13] = 8 * 512;  // User Stack Pointer
+[PROCESS_TABLE + 12] = 0;  // Swap Flag
+[PROCESS_TABLE + 14] = PTBR;  // PTBR
+[PROCESS_TABLE + 15] = PTLR;  // PTLR
+[SYSTEM_STATUS_TABLE + 1] = 0;
+// Transfer Entry Point of Idle Process
+[81 * 512] = [69 * 512 + 1];
+
+// Set SP for Idle Process User Mode
+SP = 8 * 512;
+
+// Switch to User Mode
+ireturn;

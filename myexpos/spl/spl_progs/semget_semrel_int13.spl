@@ -1,0 +1,80 @@
+alias user_sp R1;
+user_sp = SP;
+
+alias ret_addr R2;
+ret_addr = [PTBR + 2*(user_sp-1)/512]*512 + (user_sp-1)%512;
+
+alias syscall_num R3;
+syscall_num = [[PTBR + 2*(user_sp-5)/512]*512 + (user_sp-5)%512];
+
+alias arg1 R4;
+arg1 = [[PTBR + 2*(user_sp-4)/512]*512 + (user_sp-4)%512];
+
+alias pid R5;
+pid = [SYSTEM_STATUS_TABLE + 1];
+
+alias resouce_table R6;
+resouce_table = ([PROCESS_TABLE + 16*pid + 11] + 1)*512 - 16;
+
+SP = [PROCESS_TABLE + 16*pid + 11]*512 - 1;
+
+[PROCESS_TABLE + 16*pid + 9] = syscall_num;
+
+
+if(syscall_num == 17) then //Semget syscall
+    R7 = 0;
+    while(R7 < 16) do
+        if([resouce_table + R7] == -1) then
+            break;
+        endif;
+        R7 = R7 + 2;
+    endwhile;
+
+    if(R7 >= 16) then
+        [ret_addr] = -1;
+        goto return_to_user;
+    endif;
+
+    multipush(R1, R2, R3, R4, R5, R6, R7);
+    R1 = 6; //acquire semaphore
+    R2 = pid; //pid is R5
+    call RESOURCE_MANAGER;
+    multipop(R1, R2, R3, R4, R5, R6, R7);
+
+    if(R0 == -1) then
+        [ret_addr] = -2;
+        goto return_to_user;
+    endif;
+
+    [resouce_table + R7] = SEMAPHORE;
+    [resouce_table + R7 + 1] = R0;
+
+    [ret_addr] = R7/2;
+    goto return_to_user;
+endif;
+
+if(syscall_num == 18) then //Semrelease
+    if(arg1 < 0 || arg1 >= 8) then
+        [ret_addr] = -1;
+        goto return_to_user;
+    endif;
+
+    multipush(R1, R2, R3, R4, R5, R6);
+    R1 = 7; //Release semaphore
+    R2 = [resouce_table + 2*arg1 + 1]; //arg1 is R4
+    R3 = pid; //pid is R5
+    call RESOURCE_MANAGER;
+    multipop(R1, R2, R3, R4, R5, R6);
+
+    [resouce_table + 2*arg1] = -1;
+    [resouce_table + 2*arg1 + 1] = -1;
+
+    [ret_addr] = 0;
+    goto return_to_user;
+endif;
+
+
+return_to_user:
+    [PROCESS_TABLE + 16*pid + 9] = 0;
+    SP = user_sp;
+    ireturn;

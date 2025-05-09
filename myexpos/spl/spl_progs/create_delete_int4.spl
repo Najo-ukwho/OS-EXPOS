@@ -1,0 +1,180 @@
+alias user_sp R1;
+user_sp = SP;
+
+alias ret_addr R2;
+ret_addr = [PTBR + 2*(user_sp-1)/512]*512 + (user_sp-1)%512;
+
+alias syscall_num R3;
+syscall_num = [[PTBR + 2*(user_sp-5)/512]*512 + (user_sp-5)%512];
+
+alias arg1 R4;
+arg1 = [[PTBR + 2*(user_sp-4)/512]*512 + (user_sp-4)%512];
+
+alias arg2 R5;
+arg2 = [[PTBR + 2*(user_sp-3)/512]*512 + (user_sp-3)%512];
+
+alias pid R6;
+pid = [SYSTEM_STATUS_TABLE + 1];
+
+SP = [PROCESS_TABLE + 16*pid + 11]*512 - 1;
+
+[PROCESS_TABLE + 16*pid + 9] = syscall_num;
+
+if(syscall_num == 1) then //create
+    R7 = 0;
+    while(R7 < MAX_FILE_NUM) do
+        if([INODE_TABLE + 16*R7 + 1] == arg1) then
+            [ret_addr] = 0;  //file already created
+            goto return_to_user;
+        endif;
+
+        R7 = R7 + 1;
+    endwhile;
+
+    R7 = 0;
+    while(R7 < MAX_FILE_NUM) do
+        if([INODE_TABLE + 16*R7 + 1] == -1) then
+            break;
+        endif;
+        R7 = R7 + 1;
+    endwhile;
+
+
+    if(R7 >= MAX_FILE_NUM) then
+        [ret_addr] = -1; 
+        goto return_to_user;
+    endif;
+
+    R8 = INODE_TABLE + 16*R7;
+    [R8 + 0] = DATA; //file type
+    [R8 + 1] = arg1; //file name
+    [R8 + 2] = 0;    //size
+    [R8 + 3] = [PROCESS_TABLE + 16*pid + 3]; //User id
+    [R8 + 4] = arg2; //permission
+
+    [R8 + 8] = -1;
+    [R8 + 9] = -1;
+    [R8 + 10] = -1;
+    [R8 + 11] = -1;
+
+    //Now set Root file entry
+    R8 = ROOT_FILE + 8*R7;
+    [R8 + 0] = arg1; //file name
+    [R8 + 1] = 0;    //file size
+    [R8 + 2] = DATA; //file type
+    R10 = [PROCESS_TABLE + 16*pid + 3];
+    [R8 + 3] = [USER_TABLE + 2*R10 + 0]; //username
+    [R8 + 4] = arg2; //permission
+
+    [ret_addr] = 0;
+    goto return_to_user;
+endif;
+
+if(syscall_num == 4) then
+    [PROCESS_TABLE + 16*pid + 13] = user_sp;
+    
+    R7 = 0;
+    while(R7 < MAX_FILE_NUM) do
+        if([INODE_TABLE + 16*R7 + 1] == arg1) then
+            break;
+        endif;
+        R7 = R7 + 1;
+    endwhile;
+
+    if(R7 >= MAX_FILE_NUM) then
+        [ret_addr] = 0;  //File not in inode table
+        goto return_to_user;
+    endif;
+
+    if([INODE_TABLE + 16*R7 + 0] != DATA) then
+        [ret_addr] = -1;
+        goto return_to_user;
+    endif;
+
+    if([INODE_TABLE + 16*R7 + 4] == 0) then // permission exclusive
+        if(
+            [SYSTEM_STATUS_TABLE + 0] != 0  //Not Root
+            &&
+            [INODE_TABLE + 16*R7 + 3] != [SYSTEM_STATUS_TABLE + 0]  //current user Not owner
+        )then
+            
+            [ret_addr] = -1;
+            goto return_to_user;
+        endif;
+    endif;
+
+    multipush(R1, R2, R3, R4, R5, R6, R7);
+    R1 = 4;  //acquire inode
+    R2 = R7;
+    R3 = pid; //pid is in R6
+    call RESOURCE_MANAGER;
+    multipop(R1, R2, R3, R4, R5, R6, R7);
+
+    if([FILE_STATUS_TABLE + 4*R7 + 1] != -1) then
+        multipush(R1, R2, R3, R4, R5, R6, R7);
+        R1 = 5;  //release inode
+        R2 = R7;
+        R3 = pid;
+        call RESOURCE_MANAGER;
+        multipop(R1, R2, R3, R4, R5, R6, R7);
+
+        [ret_addr] = -2; //File is open
+        goto return_to_user;
+    endif;
+
+    R8 = INODE_TABLE + 16*R7 + 8;
+    R9 = 0;
+
+    while(R9 < 4) do
+        if([R8 + R9] == -1) then
+            R9 = R9 + 1;
+            continue;
+        endif;
+
+        R10 = [R8 + R9];
+
+        if([BUFFER_TABLE + 4*(R10%4) + 0] == R10) then
+            [BUFFER_TABLE + 4*(R10%4) + 1] = -1;  //unset dirty bit
+        endif;
+
+        multipush(R1, R2, R3, R4, R5, R6, R7, R8, R9);
+        R1 = 4; //Release block
+        R2 = R10;
+        R3 = pid;
+        call MEMORY_MANAGER;
+        multipop(R1, R2, R3, R4, R5, R6, R7, R8, R9);
+
+        [R8 + R9] = -1;
+
+        R9 = R9 + 1;
+    endwhile;
+
+    R8 = INODE_TABLE + 16*R7;
+    R9 = 0;
+    while(R9 < 5) do
+        [R8 + R9] = -1;
+        R9 = R9 + 1;
+    endwhile;
+
+    R8 = ROOT_FILE + 8*R7;
+    R9 = 0;
+    while(R9 < 5) do
+        [R8 + R9] = -1;
+        R9 = R9 + 1;
+    endwhile;
+
+    multipush(R1, R2, R3, R4, R5, R6, R7, R8, R9);
+    R1 = 5;  //Release inode
+    R2 = R7;
+    R3 = pid;
+    call RESOURCE_MANAGER;
+    multipop(R1, R2, R3, R4, R5, R6, R7, R8, R9);
+
+    [ret_addr] = 0;
+    goto return_to_user;
+endif;
+
+return_to_user:
+    [PROCESS_TABLE + 16*pid + 9] = 0;
+    SP = user_sp;
+    ireturn;
