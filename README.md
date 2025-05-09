@@ -11,7 +11,7 @@ The project is structured in stages as per the eXpOS roadmap. Each stage introdu
 - **Memory Manager** – Manages paging, frame allocation, and disk-to-memory transfers.
 - **Exception Handler** – Handles page faults and illegal operations.
 - **System Call Interface** – Provides support for system calls like `fork`, `exec`, `wait`, `exit`, `getpid`, `signal`, etc.
-- **Scheduler** – Implements process scheduling (Round Robin or MLFQ).
+- **Scheduler** – Implements process scheduling (Round Robin).
 - **Disk Scheduler** – Manages disk read/write scheduling using SCAN algorithm.
 - **File System Interface** – Handles file and directory operations, including access and permission control.
 - **Synchronization Support** – Implements `Wait` and `Signal` primitives for process synchronization using memoryless signals or semaphores.
@@ -20,3 +20,5 @@ The project is structured in stages as per the eXpOS roadmap. Each stage introdu
 
 - **XSM Simulator** – To simulate hardware and OS behavior.
 - **ExpL Compiler** – For writing and compiling user-level programs.
+- **SpL Compiler** – For writing and compiling kernal-level programs.
+- **XFS Interface** – For loading files from UNIX machine to XSM machine.
