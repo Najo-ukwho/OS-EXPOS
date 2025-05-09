@@ -1,0 +1,88 @@
+type
+    ll{
+        int data;
+        ll next;
+    }
+endtype
+
+decl
+    ll createNode(int data);
+    ll head;
+enddecl
+
+ll createNode(int data){
+decl
+    ll node;
+    int temp;
+enddecl
+begin
+    node = alloc();
+    node.data = data;
+    node.next = null;
+    return node;
+end
+}
+
+int main(){
+decl
+    int temp, n, i, data;
+    str out;
+    ll tail, tempNode;
+enddecl
+begin
+    temp = initialize();
+    head = alloc();
+    tail = alloc();
+    tempNode = alloc();
+    
+    head = null;
+    tail = null;
+    
+    n = 100;
+    
+    i = 1;
+    while(i <= n) do
+        data = i;
+        tempNode = createNode(data);
+        if(head == null) then
+            tail = tempNode;
+            head = tempNode;
+        else
+            tail.next = tempNode;
+            tail = tail.next;
+        endif;
+        i = i+1;
+    endwhile;
+
+    temp = exposcall("Fork");
+
+    if(temp == 0) then
+        tempNode = head;
+        while(tempNode != null) do
+            write(tempNode.data);
+            tempNode = tempNode.next;
+            if(tempNode != null) then
+                tempNode = tempNode.next;
+            else
+                break;
+            endif;
+        endwhile;
+    else
+        tempNode = head;
+        if(tempNode != null) then
+            tempNode = tempNode.next;
+        endif;
+        while(tempNode != null) do
+            write(tempNode.data);
+            tempNode = tempNode.next;
+            if(tempNode != null) then
+                tempNode = tempNode.next;
+            else
+                break;
+            endif;
+        endwhile;
+    endif;
+
+    return 0;
+end
+}

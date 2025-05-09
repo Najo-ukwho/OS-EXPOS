@@ -1,0 +1,21 @@
+int main(){
+decl
+    int prog,temp;
+    str out;
+enddecl
+begin
+    out = "Enter file:";
+    temp = exposcall("Write", -2, out);
+    temp = exposcall("Read", -1, prog);
+    
+    temp = exposcall("Exec", prog);
+    
+    if(temp == -1) then
+        out = "no such file";
+        temp = exposcall("Write", -2, out);
+    endif;
+
+    return 0;
+end
+}
+
