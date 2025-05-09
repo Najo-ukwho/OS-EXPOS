@@ -1,0 +1,43 @@
+int main(){
+decl
+    int temp, child;
+    str out, prog;
+enddecl
+begin
+    //shell
+    while(1 == 1) do
+        out = "Shell:";
+        write(out);
+        read(prog);
+
+        if(prog == "Shutdown") then
+            temp = exposcall("Shutdown");
+            if(temp != 0) then
+                out = "Shutdown fail";
+                write(out);
+            endif;
+        else
+            child = exposcall("Fork");
+
+            if(child == -1) then
+                out = "Fork fail!";
+                write(out);
+                continue;
+            endif;
+            
+            if(child == 0) then //inside child
+                temp = exposcall("Exec", prog);
+                if(temp == -1) then
+                    out = "BAD COMMAND";
+                    write(out);
+                endif;
+                temp = exposcall("Signal");
+            else //inside parent
+                temp = exposcall("Wait", child);
+            endif;
+        endif;
+    endwhile;
+    return 0;
+end
+}
+
