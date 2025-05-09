@@ -1,0 +1,24 @@
+load --library ../expl/library.lib
+load --module 0 ../spl/spl_progs/mod0_resource_manager.xsm
+load --module 1 ../spl/spl_progs/mod1_process_manager.xsm
+load --module 2 ../spl/spl_progs/mod2_memory_manager.xsm
+load --module 4 ../spl/spl_progs/mod4_device_manager.xsm
+load --module 5 ../spl/spl_progs/scheduler.xsm
+load --module 7 ../spl/spl_progs/mod7_boot_module.xsm
+load --int=4 ../spl/spl_progs/create_delete_int4.xsm
+load --int=6 ../spl/spl_progs/read_int6.xsm
+load --int=7 ../spl/spl_progs/sample_int7.xsm
+load --int=8 ../spl/spl_progs/fork_int8.xsm
+load --int=9 ../spl/spl_progs/exec_int9.xsm
+load --int=10 ../spl/spl_progs/int10.xsm
+load --int=11 ../spl/spl_progs/int11.xsm
+load --int=13 ../spl/spl_progs/semget_semrel_int13.xsm
+load --int=14 ../spl/spl_progs/semlock_semunlock_int14.xsm
+load --int=15 ../spl/spl_progs/shutdown_int15.xsm
+load --int=timer ../spl/spl_progs/sample_timer.xsm
+load --int=console ../spl/spl_progs/console_interrupt.xsm
+load --int=disk ../spl/spl_progs/disk_int2.xsm
+load --os ../spl/spl_progs/os_startup.xsm
+load --exhandler ../spl/spl_progs/exceptionhandler.xsm
+load --idle ../expl/expl_progs/idle.xsm
+load --init ../expl/expl_progs/s21_init.xsm
